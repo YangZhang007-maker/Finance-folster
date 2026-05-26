@@ -123,9 +123,11 @@ def sync_all():
     stocks = fetch_all_stocks()
     upsert_companies(stocks)
 
-    # Step 2: Process top stocks for financial indicators
-    top_stocks = stocks.head(MAX_STOCKS)
-    codes = top_stocks["code"].tolist()
+    # Step 2: Sample stocks evenly across all code prefixes
+    # (stock_info_a_code_name returns codes sorted: 000xxx first, 600xxx last)
+    step = max(1, len(stocks) // MAX_STOCKS)
+    sampled = stocks.iloc[::step].head(MAX_STOCKS)
+    codes = sampled["code"].tolist()
 
     print(f"\nFetching financial indicators for {len(codes)} stocks...")
     batch = []
