@@ -4,19 +4,23 @@ Usage:
   python sync.py          # incremental: only stocks with stale/updated data
   python sync.py --full   # full: process all stocks (~2 hours)
 """
-import os, sys, time
+import os, sys, time, socket
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 import pandas as pd
 import akshare as ak
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
+socket.setdefaulttimeout(30)
+STOCK_TIMEOUT = 15
+
 load_dotenv()
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
-BATCH_SIZE = 20
-DELAY_BETWEEN_BATCHES = 5
-DELAY_BETWEEN_STOCKS = 1.5
+BATCH_SIZE = 100
+DELAY_BETWEEN_BATCHES = 3
+DELAY_BETWEEN_STOCKS = 0.5
 INCREMENTAL_DAYS = 30  # in incremental mode, skip stocks synced within this many days
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -76,42 +80,51 @@ def get_val(series, key):
 
 
 def fetch_financial_abstract(code):
-    for attempt in range(3):
+    def _do():
+        for attempt in range(3):
+            try:
+                df = ak.stock_financial_abstract(symbol=code)
+                if df.empty:
+                    return None
+                date_cols = [c for c in df.columns if c not in ("选项", "指标") and str(c).isdigit()]
+                if not date_cols:
+                    return None
+                latest_date = date_cols[0]
+
+                common = df[df["选项"] == "常用指标"].set_index("指标")[latest_date]
+                growth = df[df["选项"] == "成长能力"].set_index("指标")[latest_date]
+                risk = df[df["选项"] == "财务风险"].set_index("指标")[latest_date]
+
+                return {
+                    "code": code,
+                    "report_date": f"{latest_date[:4]}-{latest_date[4:6]}-{latest_date[6:]}",
+                    "roe": get_val(common, "净资产收益率(ROE)"),
+                    "roa": get_val(common, "总资产报酬率(ROA)"),
+                    "gross_margin": get_val(common, "毛利率"),
+                    "net_margin": get_val(common, "销售净利率"),
+                    "debt_to_assets": get_val(common, "资产负债率"),
+                    "net_profit": get_val(common, "净利润"),
+                    "total_revenue": get_val(common, "营业总收入"),
+                    "net_assets": get_val(common, "每股净资产"),
+                    "free_cash_flow": get_val(common, "每股现金流"),
+                    "revenue_growth": get_val(growth, "营业总收入增长率"),
+                    "net_profit_growth": get_val(growth, "归属母公司净利润增长率"),
+                    "current_ratio": get_val(risk, "流动比率"),
+                }
+            except Exception as e:
+                if attempt < 2:
+                    time.sleep(5)
+                else:
+                    print(f"  Error {code}: {e}")
+                    return None
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(_do)
         try:
-            df = ak.stock_financial_abstract(symbol=code)
-            if df.empty:
-                return None
-            date_cols = [c for c in df.columns if c not in ("选项", "指标") and str(c).isdigit()]
-            if not date_cols:
-                return None
-            latest_date = date_cols[0]
-
-            common = df[df["选项"] == "常用指标"].set_index("指标")[latest_date]
-            growth = df[df["选项"] == "成长能力"].set_index("指标")[latest_date]
-            risk = df[df["选项"] == "财务风险"].set_index("指标")[latest_date]
-
-            return {
-                "code": code,
-                "report_date": f"{latest_date[:4]}-{latest_date[4:6]}-{latest_date[6:]}",
-                "roe": get_val(common, "净资产收益率(ROE)"),
-                "roa": get_val(common, "总资产报酬率(ROA)"),
-                "gross_margin": get_val(common, "毛利率"),
-                "net_margin": get_val(common, "销售净利率"),
-                "debt_to_assets": get_val(common, "资产负债率"),
-                "net_profit": get_val(common, "净利润"),
-                "total_revenue": get_val(common, "营业总收入"),
-                "net_assets": get_val(common, "每股净资产"),
-                "free_cash_flow": get_val(common, "每股现金流"),
-                "revenue_growth": get_val(growth, "营业总收入增长率"),
-                "net_profit_growth": get_val(growth, "归属母公司净利润增长率"),
-                "current_ratio": get_val(risk, "流动比率"),
-            }
-        except Exception as e:
-            if attempt < 2:
-                time.sleep(5)
-            else:
-                print(f"  Error {code}: {e}")
-                return None
+            return future.result(timeout=STOCK_TIMEOUT)
+        except FuturesTimeout:
+            print(f"  Timeout {code}")
+            return None
 
 
 def load_existing_data():
@@ -143,6 +156,9 @@ def compute_composite(ind):
 
 def sync(mode="incr"):
     full = mode == "full"
+    errors = 0
+    consecutive_errors = 0
+
     print(f"=== Starting A-Share Financial Data Sync (mode: {mode}) ===")
 
     # Step 1: Fetch all stocks and upsert companies
@@ -154,14 +170,19 @@ def sync(mode="incr"):
     codes_to_process = all_codes
 
     if not full:
-        existing = load_existing_data()
+        try:
+            existing = load_existing_data()
+        except Exception as e:
+            print(f"  Error loading existing data: {e}")
+            print(f"  Falling back to incremental with empty set")
+            existing = {}
+
         stale_codes = []
         new_codes = []
         for code in all_codes:
             if code not in existing:
                 new_codes.append(code)
             else:
-                # Check if data is older than INCREMENTAL_DAYS
                 updated = existing[code].get("updated_at", "")
                 if updated:
                     from datetime import datetime, timedelta
@@ -182,8 +203,9 @@ def sync(mode="incr"):
     batch = []
 
     for i, code in enumerate(codes_to_process):
+        # Save batch periodically
         if i > 0 and i % BATCH_SIZE == 0:
-            print(f"  Progress: {i}/{len(codes_to_process)}")
+            print(f"  Progress: {i}/{len(codes_to_process)} (errors: {errors})")
             upsert_batch(batch)
             batch = []
             time.sleep(DELAY_BETWEEN_BATCHES)
@@ -192,13 +214,25 @@ def sync(mode="incr"):
         if fin:
             compute_composite(fin)
             batch.append(fin)
+            consecutive_errors = 0
+        else:
+            errors += 1
+            consecutive_errors += 1
+            # If too many consecutive failures, API is likely down – pause and retry
+            if consecutive_errors >= 50:
+                print(f"  Pausing: {consecutive_errors} consecutive failures, API may be down")
+                time.sleep(120)
+                if consecutive_errors >= 100:
+                    print(f"  Aborting: API unavailable after {consecutive_errors} failures")
+                    break
 
         time.sleep(DELAY_BETWEEN_STOCKS)
 
+    # Final batch
     if batch:
         upsert_batch(batch)
 
-    print(f"=== Sync complete. Processed {len(codes_to_process)} stocks ===")
+    print(f"=== Sync complete. Processed {i+1}/{len(codes_to_process)} stocks, errors: {errors} ===")
 
 
 def upsert_batch(batch):
@@ -215,5 +249,22 @@ def upsert_batch(batch):
 
 
 if __name__ == "__main__":
+    import traceback
     mode = "full" if "--full" in sys.argv else "incr"
-    sync(mode)
+    if "--incremental" in sys.argv:
+        mode = "incr"
+    print(f"[{pd.Timestamp.now()}] Starting sync...")
+    try:
+        # Save partial work on SIGTERM
+        signal_imported = False
+        try:
+            import signal
+            signal_imported = True
+        except ImportError:
+            pass
+
+        sync(mode)
+    except Exception as e:
+        print(f"FATAL: {e}")
+        traceback.print_exc()
+    print(f"[{pd.Timestamp.now()}] Sync finished.")
