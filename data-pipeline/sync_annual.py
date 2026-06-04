@@ -1,27 +1,38 @@
 """
 10-Year Annual Financial Data Sync for Supabase.
-Fetches yearly financial data + PE/PB/市值 for all A-share stocks.
 Usage: python sync_annual.py
 """
-import os, sys, time, socket
+import os, time, socket, traceback
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 import pandas as pd
 import akshare as ak
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-socket.setdefaulttimeout(30)
-STOCK_TIMEOUT = 20
+socket.setdefaulttimeout(15)
+STOCK_TIMEOUT = 15
+MAX_CONSECUTIVE_FAILURES = 30
+PAUSE_SECONDS = 120
+BATCH_SIZE = 50
+DELAY = 0.3
 
 load_dotenv()
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_SERVICE_KEY"]
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-BATCH_SIZE = 50
-DELAY = 0.5
-MAX_STOCKS = 99999
+PROGRESS_FILE = os.path.join(os.path.dirname(__file__), ".sync_annual_progress")
 
+def save_progress(index):
+    with open(PROGRESS_FILE, "w") as f:
+        f.write(str(index))
+
+def load_progress():
+    try:
+        with open(PROGRESS_FILE) as f:
+            return int(f.read().strip())
+    except:
+        return 0
 
 def get_val(series, key):
     val = series.get(key)
@@ -34,30 +45,30 @@ def get_val(series, key):
     except (ValueError, TypeError):
         return None
 
-
 def fetch_stock_list():
-    """Get all stocks + PE/PB/市值 in one batch from Sina."""
-    print("Fetching stock list + PE/PB/market cap...")
-    df = ak.stock_zh_a_spot()
-    df = df.rename(columns={
-        "代码": "code", "名称": "name",
-        "最新价": "price", "成交量": "volume", "成交额": "amount",
-    })
-    df["code"] = df["code"].astype(str)
-    df = df[df["code"].str.match(r"^(60|00|30|68)\d{4}$")]
-    return df
-
+    """Get ALL stock codes from Supabase with pagination."""
+    print("Fetching stock list from Supabase...")
+    codes = []
+    offset = 0
+    while True:
+        result = supabase.table("companies").select("code").range(offset, offset + 999).execute()
+        if not result.data:
+            break
+        codes.extend(r["code"] for r in result.data)
+        offset += 1000
+        if len(result.data) < 1000:
+            break
+    print(f"Got {len(codes)} stocks from database")
+    return codes
 
 def fetch_annual_financials(code):
-    """Fetch ALL yearly (1231) financial data for a stock, tagged with year."""
+    """Fetch ALL yearly (1231) financial data for a stock."""
     def _do():
         for attempt in range(2):
             try:
                 df = ak.stock_financial_abstract(symbol=code)
                 if df.empty:
                     return None
-
-                # Only annual reports (xxxx1231)
                 date_cols = [c for c in df.columns if str(c).isdigit() and c.endswith("1231")]
                 if not date_cols:
                     return None
@@ -81,22 +92,19 @@ def fetch_annual_financials(code):
                         "net_assets": get_val(common[date_col], "每股净资产"),
                         "free_cash_flow": get_val(common[date_col], "每股现金流"),
                     }
-                    # revenue_growth / net_profit_growth from growth sheet
-                    row["revenue_growth"] = get_val(growth[date_col], "营业总收入增长率") if date_col in growth.columns else None
-                    row["net_profit_growth"] = get_val(growth[date_col], "归属母公司净利润增长率") if date_col in growth.columns else None
-                    # current_ratio from risk sheet
-                    row["current_ratio"] = get_val(risk[date_col], "流动比率") if date_col in risk.columns else None
-                    # gross_profit = total_revenue * gross_margin / 100
+                    if date_col in growth.columns:
+                        row["revenue_growth"] = get_val(growth[date_col], "营业总收入增长率")
+                        row["net_profit_growth"] = get_val(growth[date_col], "归属母公司净利润增长率")
+                    if date_col in risk.columns:
+                        row["current_ratio"] = get_val(risk[date_col], "流动比率")
                     if row["total_revenue"] and row["gross_margin"]:
                         row["gross_profit"] = round(row["total_revenue"] * row["gross_margin"] / 100, 2)
-
                     results.append(row)
                 return results
-            except Exception as e:
+            except Exception:
                 if attempt < 1:
                     time.sleep(3)
                 else:
-                    print(f"  Error {code}: {e}")
                     return None
 
     with ThreadPoolExecutor(max_workers=1) as executor:
@@ -104,79 +112,78 @@ def fetch_annual_financials(code):
         try:
             return future.result(timeout=STOCK_TIMEOUT)
         except FuturesTimeout:
-            print(f"  Timeout {code}")
             return None
 
-
-def add_valuation_data(annual_rows, spot_row):
-    """Add PE/PB/market cap from spot data to each annual row."""
-    # PE/PB from spot data only applies to most recent year;
-    # for historical years these remain NULL
-    # But we can add market cap estimate for recent year
-    pass  # We'll handle this differently
-
-
 def sync_annual():
-    print("=== Starting 10-Year Annual Financial Data Sync ===")
+    print(f"[{pd.Timestamp.now()}] === Starting 10-Year Annual Financial Data Sync ===")
 
-    # Step 1: Get stock list with PE/PB
-    spot_df = fetch_stock_list()
-    print(f"Got {len(spot_df)} stocks")
+    # Step 1: Get existing stock codes from Supabase
+    codes = fetch_stock_list()
 
-    # Build PE/PB/market cap lookup from spot data
-    # spot_df has NO PE/PB columns from Sina (non-trading hours) - skip for now
-    pe_map = {}
-    pb_map = {}
+    # Step 2: Pre-filter stocks that already have annual data (incremental)
+    print("Checking existing annual data...")
+    try:
+        existing = supabase.table("annual_financials").select("code").execute()
+        existing_codes = set(r["code"] for r in existing.data)
+        new_codes = [c for c in codes if c not in existing_codes]
+        print(f"  {len(new_codes)} new, {len(codes) - len(new_codes)} already synced")
+        codes = new_codes if new_codes else codes
+    except Exception:
+        print("  Could not check existing data, syncing all")
 
-    # Upsert companies
-    print("Upserting companies...")
-    batch = []
-    for _, row in spot_df.iterrows():
-        batch.append({"code": row["code"], "name": str(row.get("name", ""))[:100]})
-        if len(batch) >= 100:
-            try:
-                supabase.table("companies").upsert(batch, on_conflict="code").execute()
-            except:
-                pass
-            batch = []
-    if batch:
-        supabase.table("companies").upsert(batch, on_conflict="code").execute()
-
-    # Step 2: Process stocks for annual financial data
-    codes = spot_df["code"].tolist()
-    print(f"\nFetching 10-year annual financials for {len(codes)} stocks...")
+    start_idx = load_progress()
+    if start_idx > 0:
+        print(f"Resuming from {start_idx}/{len(codes)}...")
 
     total_rows = 0
     annual_batch = []
+    errors = 0
+    consecutive_failures = 0
 
-    for i, code in enumerate(codes):
-        if i > 0 and i % BATCH_SIZE == 0:
-            print(f"  Progress: {i}/{len(codes)} ({total_rows} annual rows)")
-            if annual_batch:
-                _upsert_annual(annual_batch)
-                annual_batch = []
-            time.sleep(3)
+    for i in range(start_idx, len(codes)):
+        code = codes[i]
 
-        annuals = fetch_annual_financials(code)
-        if annuals:
-            # Filter to last 10 years only
-            ten_years_ago = f"{pd.Timestamp.now().year - 10}1231"
-            filtered = [r for r in annuals if r.get("report_date", "0000") >= f"{pd.Timestamp.now().year - 10}-12-31"]
-            # Also keep the actual last 10 entries as a fallback
-            if len(filtered) < 10:
-                filtered = annuals[-10:] if len(annuals) > 10 else annuals
+        if len(annual_batch) >= BATCH_SIZE:
+            _upsert_annual(annual_batch)
+            total_rows += len(annual_batch)
+            annual_batch = []
+            save_progress(i)
+            print(f"  Progress: {i}/{len(codes)} ({total_rows} rows, {errors} errors)")
+            time.sleep(2)
 
-            # Add any spot PE/PB data (only applies to current year unfortunately)
-            annual_batch.extend(filtered)
-            total_rows += len(filtered)
+        try:
+            annuals = fetch_annual_financials(code)
+        except Exception:
+            annuals = None
 
+        if annuals is None:
+            consecutive_failures += 1
+            errors += 1
+            if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+                print(f"  Pausing: {consecutive_failures} consecutive failures")
+                time.sleep(PAUSE_SECONDS)
+                if consecutive_failures >= 50:
+                    consecutive_failures = 0
+            time.sleep(0.5)
+            continue
+        else:
+            consecutive_failures = 0
+
+        if len(annuals) > 10:
+            annuals = annuals[-10:]
+        annual_batch.extend(annuals)
         time.sleep(DELAY)
 
     if annual_batch:
         _upsert_annual(annual_batch)
+        total_rows += len(annual_batch)
 
-    print(f"=== Sync complete. Total annual rows: {total_rows} ===")
+    try:
+        os.remove(PROGRESS_FILE)
+    except:
+        pass
 
+    print(f"[{pd.Timestamp.now()}] === Sync complete. Total rows: {total_rows}, Errors: {errors} ===")
 
 def _upsert_annual(batch):
     if not batch:
@@ -186,10 +193,13 @@ def _upsert_annual(batch):
         supabase.table("annual_financials").upsert(
             clean, on_conflict="code,report_date"
         ).execute()
-        print(f"  Upserted {len(clean)} annual rows")
     except Exception as e:
         print(f"  Upsert error: {str(e)[:80]}")
 
-
 if __name__ == "__main__":
-    sync_annual()
+    try:
+        sync_annual()
+    except Exception as e:
+        print(f"FATAL: {e}")
+        traceback.print_exc()
+        print(f"[{pd.Timestamp.now()}] Sync terminated with error.")
