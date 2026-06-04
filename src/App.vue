@@ -7,6 +7,7 @@
           <router-link to="/" exact-active-class="active-link">搜索公司</router-link>
           <router-link to="/watchlist" active-class="active-link">自选列表</router-link>
           <router-link to="/metrics" active-class="active-link">指标统计</router-link>
+          <router-link to="/charts" active-class="active-link">趋势图表</router-link>
         </div>
       </div>
     </nav>

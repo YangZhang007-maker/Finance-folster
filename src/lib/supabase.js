@@ -75,3 +75,23 @@ export async function getCompanyNames(codes) {
   }
   return map
 }
+
+export async function getAnnualFinancials(code) {
+  const { data, error } = await supabase
+    .from('annual_financials')
+    .select('*')
+    .eq('code', code)
+    .order('report_date', { ascending: true })
+  if (error) throw error
+  return data || []
+}
+
+export async function searchAllCompanies(query) {
+  const { data, error } = await supabase
+    .from('companies')
+    .select('code, name')
+    .or(`name.ilike.%${query}%,code.ilike.%${query}%`)
+    .limit(50)
+  if (error) throw error
+  return data || []
+}
