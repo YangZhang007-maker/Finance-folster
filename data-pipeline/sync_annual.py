@@ -64,7 +64,7 @@ def fetch_stock_list():
 def fetch_annual_financials(code):
     """Fetch ALL yearly (1231) financial data for a stock."""
     def _do():
-        for attempt in range(2):
+        for attempt in range(3):
             try:
                 df = ak.stock_financial_abstract(symbol=code)
                 if df.empty:
@@ -102,8 +102,8 @@ def fetch_annual_financials(code):
                     results.append(row)
                 return results
             except Exception:
-                if attempt < 1:
-                    time.sleep(3)
+                if attempt < 2:
+                    time.sleep(2 * (attempt + 1))
                 else:
                     return None
 
@@ -123,8 +123,16 @@ def sync_annual():
     # Step 2: Pre-filter stocks that already have annual data (incremental)
     print("Checking existing annual data...")
     try:
-        existing = supabase.table("annual_financials").select("code").execute()
-        existing_codes = set(r["code"] for r in existing.data)
+        existing_codes = set()
+        offset = 0
+        while True:
+            r = supabase.table("annual_financials").select("code").range(offset, offset + 999).execute()
+            if not r.data:
+                break
+            existing_codes.update(row["code"] for row in r.data)
+            offset += 1000
+            if len(r.data) < 1000:
+                break
         new_codes = [c for c in codes if c not in existing_codes]
         print(f"  {len(new_codes)} new, {len(codes) - len(new_codes)} already synced")
         codes = new_codes if new_codes else codes
@@ -169,8 +177,11 @@ def sync_annual():
         else:
             consecutive_failures = 0
 
+        # Take 10 most recent years, sorted oldest to newest
+        # API returns date_cols newest-first, so annuals[0] = 2025, annuals[-1] = 1998
+        # Take annuals[:10] = newest 10, then sort ascending
         if len(annuals) > 10:
-            annuals = annuals[-10:]
+            annuals = sorted(annuals[:10], key=lambda r: r["report_date"])
         annual_batch.extend(annuals)
         time.sleep(DELAY)
 
@@ -189,12 +200,15 @@ def _upsert_annual(batch):
     if not batch:
         return
     clean = [{k: v for k, v in ind.items() if v is not None} for ind in batch]
-    try:
-        supabase.table("annual_financials").upsert(
-            clean, on_conflict="code,report_date"
-        ).execute()
-    except Exception as e:
-        print(f"  Upsert error: {str(e)[:80]}")
+    for attempt in range(5):
+        try:
+            supabase.table("annual_financials").upsert(
+                clean, on_conflict="code,report_date"
+            ).execute()
+            return
+        except Exception as e:
+            print(f"  Upsert retry {attempt+1}/5: {str(e)[:60]}")
+            time.sleep(5 * (attempt + 1))
 
 if __name__ == "__main__":
     try:
