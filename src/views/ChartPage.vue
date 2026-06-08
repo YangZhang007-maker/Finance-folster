@@ -175,7 +175,7 @@ const chartConfigs = computed(() => {
   return [
     // 1. 毛利润  — bar chart, unit 亿
     {
-      key: 'gross_profit', title: '毛利润', unit: '亿', chartType: 'Bar',
+      key: 'gross_profit', title: '毛利润', unit: '亿', chartType: Bar,
       chartData: {
         labels,
         datasets: [{
@@ -192,7 +192,7 @@ const chartConfigs = computed(() => {
     },
     // 2. 毛利率  — line chart, unit %
     {
-      key: 'gross_margin', title: '毛利率', unit: '%', chartType: 'Line',
+      key: 'gross_margin', title: '毛利率', unit: '%', chartType: Line,
       chartData: {
         labels,
         datasets: [{
@@ -210,7 +210,7 @@ const chartConfigs = computed(() => {
     },
     // 3. 净利润  — bar chart, unit 亿
     {
-      key: 'net_profit', title: '净利润', unit: '亿', chartType: 'Bar',
+      key: 'net_profit', title: '净利润', unit: '亿', chartType: Bar,
       chartData: {
         labels,
         datasets: [{
@@ -227,7 +227,7 @@ const chartConfigs = computed(() => {
     },
     // 4. 净利率  — line chart, unit %
     {
-      key: 'net_margin', title: '净利率', unit: '%', chartType: 'Line',
+      key: 'net_margin', title: '净利率', unit: '%', chartType: Line,
       chartData: {
         labels,
         datasets: [{
@@ -245,7 +245,7 @@ const chartConfigs = computed(() => {
     },
     // 5. 总市值  — bar chart (placeholder: use total_revenue as proxy)
     {
-      key: 'total_revenue', title: '营业总收入', unit: '亿', chartType: 'Bar',
+      key: 'total_revenue', title: '营业总收入', unit: '亿', chartType: Bar,
       chartData: {
         labels,
         datasets: [{
@@ -262,7 +262,7 @@ const chartConfigs = computed(() => {
     },
     // 6. 净资产收益率  — line chart, unit %
     {
-      key: 'roe', title: '净资产收益率', unit: '%', chartType: 'Line',
+      key: 'roe', title: '净资产收益率', unit: '%', chartType: Line,
       chartData: {
         labels,
         datasets: [{
