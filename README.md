@@ -1,5 +1,20 @@
-# Vue 3 + Vite
+# 第二周更新
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+1. 获取近十年年报财务数据（4815只A股，2016-2025年度覆盖）
+2. 新增财报数据统计图展示功能（6个独立指标卡片：毛利润、毛利率、净利润、净利率、营业总收入、净资产收益率）
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+## A股财务数据平台
+
+A股公司财务数据搜索、自选列表管理、多年指标趋势图表展示。
+
+### 技术栈
+- 前端：Vue 3 + Vite + Chart.js
+- 数据库：Supabase (PostgreSQL)
+- 数据源：AKShare → 东方财富 API
+- 部署：Vercel
+
+### 功能
+- 搜索 A 股公司并加入自选
+- 15 项财务指标对比统计表
+- 10 年年度财务趋势图表
+- 每日增量数据同步
