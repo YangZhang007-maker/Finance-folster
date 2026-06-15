@@ -134,14 +134,14 @@ function resetSearch() { selectedStock.value = null; annualData.value = [] }
 const chartData = computed(() => {
   if (!annualData.value || annualData.value.length === 0) return null
   return annualData.value.filter(d => {
-    const year = d.report_date?.substring(0, 4)
-    return year >= '2016' && year <= '2025'
+    const y = d.year
+    return y >= 2016 && y <= 2025
   })
 })
 
 const labels = computed(() => {
   if (!chartData.value) return []
-  return chartData.value.map(d => d.report_date?.substring(0, 4) || '')
+  return chartData.value.map(d => String(d.year || ''))
 })
 
 // ---- Common options ----

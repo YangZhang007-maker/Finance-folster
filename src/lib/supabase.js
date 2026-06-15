@@ -91,7 +91,7 @@ export async function getAnnualFinancialsV2(code) {
     .from('annual_financials_v2')
     .select('*')
     .eq('code', code)
-    .order('report_date', { ascending: true })
+    .order('year', { ascending: true })
   if (error) throw error
   return data || []
 }
