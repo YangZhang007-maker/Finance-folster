@@ -8,6 +8,8 @@
           <router-link to="/watchlist" active-class="active-link">自选列表</router-link>
           <router-link to="/metrics" active-class="active-link">指标统计</router-link>
           <router-link to="/charts" active-class="active-link">趋势图表</router-link>
+          <router-link to="/money-machine" active-class="active-link">赚钱机器</router-link>
+          <router-link to="/buffett" active-class="active-link">巴菲特指标</router-link>
         </div>
       </div>
     </nav>

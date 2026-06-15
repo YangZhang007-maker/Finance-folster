@@ -86,6 +86,16 @@ export async function getAnnualFinancials(code) {
   return data || []
 }
 
+export async function getAnnualFinancialsV2(code) {
+  const { data, error } = await supabase
+    .from('annual_financials_v2')
+    .select('*')
+    .eq('code', code)
+    .order('report_date', { ascending: true })
+  if (error) throw error
+  return data || []
+}
+
 export async function searchAllCompanies(query) {
   const { data, error } = await supabase
     .from('companies')
