@@ -277,13 +277,41 @@ const treemapOption = computed(() => {
   const data = filteredCompanyData.value
   if (data.length === 0) return null
 
-  const treemapData = data.map((item, idx) => ({
-    name: item.name,
-    value: item.value,
-    itemStyle: {
-      color: idx === 0 ? currentIndicator.value.treemapTopColor : currentIndicator.value.treemapBgColor,
-    },
-  }))
+  // 颜色渐进方案：最大值深色，其余按值递减逐渐变浅，梯度差小
+  const colorGradients = {
+    gross_profit: { max: '#e52e2e', min: '#f8c8c8' },  // 深红 → 浅红（梯度小）
+    gross_margin: { max: '#2086f3', min: '#c2dffb' },  // 深蓝 → 浅蓝（梯度小）
+  }
+  const grad = colorGradients[filters.value.indicator] || colorGradients.gross_profit
+
+  const maxVal = Math.max(...data.map(d => d.value), 1)
+  const minVal = Math.min(...data.map(d => d.value), 0)
+
+  // 将 hex 转为 rgb 分量
+  function hexToRgb(hex) {
+    const r = parseInt(hex.slice(1,3), 16)
+    const g = parseInt(hex.slice(3,5), 16)
+    const b = parseInt(hex.slice(5,7), 16)
+    return { r, g, b }
+  }
+  function rgbToHex(r, g, b) {
+    return '#' + [r, g, b].map(v => Math.round(v).toString(16).padStart(2, '0')).join('')
+  }
+  const maxRgb = hexToRgb(grad.max)
+  const minRgb = hexToRgb(grad.min)
+
+  const treemapData = data.map((item) => {
+    // 线性插值：值越大越接近 maxRgb
+    const t = maxVal > minVal ? (item.value - minVal) / (maxVal - minVal) : 0
+    const r = Math.round(minRgb.r + (maxRgb.r - minRgb.r) * t)
+    const g = Math.round(minRgb.g + (maxRgb.g - minRgb.g) * t)
+    const b = Math.round(minRgb.b + (maxRgb.b - minRgb.b) * t)
+    return {
+      name: item.name,
+      value: item.value,
+      itemStyle: { color: rgbToHex(r, g, b) },
+    }
+  })
 
   return {
     tooltip: {
