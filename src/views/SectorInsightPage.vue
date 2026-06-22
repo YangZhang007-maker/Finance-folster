@@ -282,7 +282,7 @@ const treemapOption = computed(() => {
   const colorGradients = {
     gross_profit: { max: '#e52e2e', min: '#f8c8c8' },
     gross_margin: { max: '#2086f3', min: '#c2dffb' },
-    selling_to_gross: { max: '#0ea5e9', min: '#cceefb' },  // 高亮蓝渐变
+    selling_to_gross: { max: '#1d4ed8', min: '#c8d9f5' },  // 深蓝→浅蓝渐变
   }
   const grad = colorGradients[filters.value.indicator] || colorGradients.gross_profit
 
