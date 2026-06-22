@@ -124,8 +124,9 @@ const industryOptions = ['日常消费', '可选消费', '信息技术', '工业
 const yearOptions = [2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016]
 
 const indicatorOptions = [
-  { value: 'gross_profit', label: '毛利润', note: '营业收入-营业成本，稳定趋升、越高越好', unit: '亿元', isPercent: false, treemapTopColor: '#e52e2e', treemapBgColor: '#f4d4d4' },
-  { value: 'gross_margin', label: '毛利率', note: '毛利润/营业收入，只有具备某种可持续竞争优势才能在长期运营中一直保持赢利', unit: '%', isPercent: true, treemapTopColor: '#2086f3', treemapBgColor: '#d0e4fb' },
+  { value: 'gross_profit', label: '毛利润', note: '营业收入-营业成本，稳定趋升、越高越好', unit: '亿元', isPercent: false },
+  { value: 'gross_margin', label: '毛利率', note: '毛利润/营业收入，只有具备某种可持续竞争优势才能在长期运营中一直保持赢利', unit: '%', isPercent: true },
+  { value: 'selling_to_gross', label: '销售费用占毛利比', note: '销售费用/毛利润，部分有持续竞争力的品牌公司，销售费用占毛利的比重也可能50-60%，如快消品，若低于30%则比较有竞争力', unit: '%', isPercent: true },
 ]
 
 // ============================================================
@@ -279,8 +280,9 @@ const treemapOption = computed(() => {
 
   // 颜色渐进方案：最大值深色，其余按值递减逐渐变浅，梯度差小
   const colorGradients = {
-    gross_profit: { max: '#e52e2e', min: '#f8c8c8' },  // 深红 → 浅红（梯度小）
-    gross_margin: { max: '#2086f3', min: '#c2dffb' },  // 深蓝 → 浅蓝（梯度小）
+    gross_profit: { max: '#e52e2e', min: '#f8c8c8' },
+    gross_margin: { max: '#2086f3', min: '#c2dffb' },
+    selling_to_gross: { max: '#0ea5e9', min: '#cceefb' },  // 高亮蓝渐变
   }
   const grad = colorGradients[filters.value.indicator] || colorGradients.gross_profit
 
@@ -371,6 +373,7 @@ function getIndicatorValue(fin, indicator) {
   const map = {
     gross_profit: fin.gross_profit,
     gross_margin: fin.gross_margin,
+    selling_to_gross: fin.selling_to_gross,
   }
   return map[indicator] != null ? Number(map[indicator]) : null
 }
