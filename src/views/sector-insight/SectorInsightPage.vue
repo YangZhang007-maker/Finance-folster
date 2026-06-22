@@ -127,6 +127,10 @@ const indicatorOptions = [
   { value: 'gross_profit', label: '毛利润', note: '营业收入-营业成本，稳定趋升、越高越好', unit: '亿元', isPercent: false },
   { value: 'gross_margin', label: '毛利率', note: '毛利润/营业收入，只有具备某种可持续竞争优势才能在长期运营中一直保持赢利', unit: '%', isPercent: true },
   { value: 'selling_to_gross', label: '销售费用占毛利比', note: '销售费用/毛利润，部分有持续竞争力的品牌公司，销售费用占毛利的比重也可能50-60%，如快消品，若低于30%则比较有竞争力', unit: '%', isPercent: true },
+  { value: 'admin_to_gross', label: '管理费用占毛利比', note: '管理费用/毛利润，销售费用及一般管理费用占毛利润的比例越少越好，两项合计30%以下最好', unit: '%', isPercent: true },
+  { value: 'selling_admin_to_gross', label: '销管费用占毛利比', note: '（销售费用+管理费用）/毛利润，销售费用及一般管理费用占毛利润的比例越少越好，两项合计30%以下最好，高于80%则回避', unit: '%', isPercent: true },
+  { value: 'rd_to_gross', label: '研发费用占毛利比', note: '研发费用/毛利润，尽量回避那些必须经常花费巨额研发费用的公司，高于15%则回避', unit: '%', isPercent: true },
+  { value: 'sga_rd_to_gross', label: '销管研三费占毛利比', note: '（销售费用+管理费用+研发费用）/毛利润，越低越好，高于80%则回避', unit: '%', isPercent: true },
 ]
 
 // ============================================================
@@ -279,10 +283,16 @@ const treemapOption = computed(() => {
   if (data.length === 0) return null
 
   // 颜色渐进方案：最大值深色，其余按值递减逐渐变浅，梯度差小
-  const colorGradients = {
+  // 统一深蓝→浅蓝渐变的指标
+const BLUE_GRAD = { max: '#2086f3', min: '#c2dffb' }
+const colorGradients = {
     gross_profit: { max: '#e52e2e', min: '#f8c8c8' },
     gross_margin: { max: '#2086f3', min: '#c2dffb' },
-    selling_to_gross: { max: '#2086f3', min: '#c2dffb' },  // 深蓝→浅蓝渐变
+    selling_to_gross: BLUE_GRAD,
+    admin_to_gross: BLUE_GRAD,
+    selling_admin_to_gross: BLUE_GRAD,
+    rd_to_gross: BLUE_GRAD,
+    sga_rd_to_gross: BLUE_GRAD,
   }
   const grad = colorGradients[filters.value.indicator] || colorGradients.gross_profit
 
@@ -374,6 +384,10 @@ function getIndicatorValue(fin, indicator) {
     gross_profit: fin.gross_profit,
     gross_margin: fin.gross_margin,
     selling_to_gross: fin.selling_to_gross,
+    admin_to_gross: fin.admin_to_gross,
+    selling_admin_to_gross: fin.selling_admin_to_gross,
+    rd_to_gross: fin.rd_to_gross,
+    sga_rd_to_gross: fin.sga_rd_to_gross,
   }
   return map[indicator] != null ? Number(map[indicator]) : null
 }
