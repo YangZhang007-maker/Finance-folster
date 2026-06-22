@@ -51,7 +51,6 @@ export async function getFinancialIndicators(codes) {
     .order('report_date', { ascending: false })
   if (error) throw error
 
-  // Deduplicate by code, keeping the most recent report
   const seen = new Set()
   const latest = []
   for (const row of data || []) {
@@ -104,4 +103,37 @@ export async function searchAllCompanies(query) {
     .limit(50)
   if (error) throw error
   return data || []
+}
+
+/** 获取公司列表（含 sector），按 codes 筛选 */
+export async function getCompaniesByCodes(codes) {
+  if (!codes || codes.length === 0) return []
+  const all = []
+  for (let i = 0; i < codes.length; i += 300) {
+    const batch = codes.slice(i, i + 300)
+    const { data, error } = await supabase
+      .from('companies')
+      .select('code, name, sector')
+      .in('code', batch)
+    if (error) throw error
+    if (data) all.push(...data)
+  }
+  return all
+}
+
+/** 批量获取年度财务数据（指定年份），按 codes 筛选 */
+export async function getFinancialsByYear(codes, year) {
+  if (!codes || codes.length === 0) return []
+  const all = []
+  for (let i = 0; i < codes.length; i += 200) {
+    const batch = codes.slice(i, i + 200)
+    const { data, error } = await supabase
+      .from('annual_financials_v2')
+      .select('code, year, gross_profit, parent_net_profit, operating_revenue, total_assets, roe, gross_margin, net_profit_margin')
+      .in('code', batch)
+      .eq('year', year)
+    if (error) throw error
+    if (data) all.push(...data)
+  }
+  return all
 }
