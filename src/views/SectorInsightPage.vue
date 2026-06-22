@@ -47,15 +47,15 @@
         </div>
         <div class="stat-card">
           <div class="stat-label">平均值</div>
-          <div class="stat-value green">{{ avgValue }}<span class="stat-unit">亿元</span></div>
+          <div class="stat-value green">{{ avgValue }}<span class="stat-unit">{{ indicatorUnit }}</span></div>
         </div>
         <div class="stat-card">
           <div class="stat-label">最大值</div>
-          <div class="stat-value red">{{ maxValue }}<span class="stat-unit">亿元</span></div>
+          <div class="stat-value red">{{ maxValue }}<span class="stat-unit">{{ indicatorUnit }}</span></div>
         </div>
         <div class="stat-card">
           <div class="stat-label">最小值</div>
-          <div class="stat-value orange">{{ minValue }}<span class="stat-unit">亿元</span></div>
+          <div class="stat-value orange">{{ minValue }}<span class="stat-unit">{{ indicatorUnit }}</span></div>
         </div>
       </div>
 
@@ -76,7 +76,7 @@
               <th>公司名称</th>
               <th>代码</th>
               <th>细分行业</th>
-              <th class="col-value">{{ currentIndicatorLabel }}（亿元）</th>
+              <th class="col-value">{{ currentIndicatorLabel }}（{{ indicatorUnit }}）</th>
             </tr>
           </thead>
           <tbody>
@@ -124,7 +124,8 @@ const industryOptions = ['日常消费', '可选消费', '信息技术', '工业
 const yearOptions = [2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016]
 
 const indicatorOptions = [
-  { value: 'gross_profit', label: '毛利润', note: '营业收入-营业成本，稳定趋升、越高越好' },
+  { value: 'gross_profit', label: '毛利润', note: '营业收入-营业成本，稳定趋升、越高越好', unit: '亿元', isPercent: false, treemapTopColor: '#e52e2e', treemapBgColor: '#f4d4d4' },
+  { value: 'gross_margin', label: '毛利率', note: '毛利润/营业收入，只有具备某种可持续竞争优势才能在长期运营中一直保持赢利', unit: '%', isPercent: true, treemapTopColor: '#2086f3', treemapBgColor: '#d0e4fb' },
 ]
 
 // ============================================================
@@ -141,15 +142,17 @@ const watchlistCodes = ref([])
 const companies = ref([])
 const financials = ref([])
 
-const currentIndicatorLabel = computed(() => {
-  const found = indicatorOptions.find(i => i.value === filters.value.indicator)
-  return found ? found.label : filters.value.indicator
+const currentIndicator = computed(() => {
+  return indicatorOptions.find(i => i.value === filters.value.indicator) || indicatorOptions[0]
 })
 
-const indicatorNote = computed(() => {
-  const found = indicatorOptions.find(i => i.value === filters.value.indicator)
-  return found ? found.note : ''
-})
+const currentIndicatorLabel = computed(() => currentIndicator.value.label)
+
+const indicatorNote = computed(() => currentIndicator.value.note)
+
+const indicatorUnit = computed(() => currentIndicator.value.unit)
+
+const indicatorIsPercent = computed(() => currentIndicator.value.isPercent)
 
 // ============================================================
 // 数据加载
@@ -221,11 +224,16 @@ const filteredCompanyData = computed(() => {
     const value = fin ? getIndicatorValue(fin, filters.value.indicator) : null
     if (value == null) continue
 
+    // 指标值转换：毛利润 元→亿元，毛利率保持原值(%)
+    const displayValue = currentIndicator.value.isPercent
+      ? Number(Number(value).toFixed(2))
+      : Number((value / 1e8).toFixed(2))
+
     results.push({
       name: comp.name || code,
       code: code,
       sector: comp.sector || '-',
-      value: Number((value / 1e8).toFixed(2)), // 元→亿元
+      value: displayValue,
     })
   }
 
@@ -273,11 +281,11 @@ const treemapOption = computed(() => {
     name: item.name,
     value: item.value,
     itemStyle: {
-      color: idx === 0 ? '#e52e2e' : '#f4d4d4',
+      color: idx === 0 ? currentIndicator.value.treemapTopColor : currentIndicator.value.treemapBgColor,
     },
     label: {
       show: true,
-      formatter: `{b}\n{a|${item.value}亿}`,
+      formatter: `{b}\n{a|${item.value}${currentIndicator.value.unit === '亿元' ? '亿' : '%'}}`,
       rich: {
         a: {
           fontSize: 10,
@@ -293,7 +301,7 @@ const treemapOption = computed(() => {
   return {
     tooltip: {
       formatter: (params) => {
-        return `${params.name}<br/>${currentIndicatorLabel.value}: <b>${params.value}亿元</b>`
+        return `${params.name}<br/>${currentIndicatorLabel.value}: <b>${params.value}${currentIndicator.value.unit === '亿元' ? '亿元' : '%'}</b>`
       },
     },
     series: [
@@ -311,7 +319,8 @@ const treemapOption = computed(() => {
           fontSize: 13,
           fontWeight: 'bold',
           formatter: (p) => {
-            return `{b|${p.name}}\n{s|${p.value}亿}`
+            const u = currentIndicator.value.unit === '亿元' ? '亿' : '%'
+            return `{b|${p.name}}\n{s|${p.value}${u}}`
           },
           rich: {
             b: { fontSize: 13, fontWeight: 'bold', color: '#fff', lineHeight: 22 },
@@ -344,6 +353,7 @@ const treemapOption = computed(() => {
 function getIndicatorValue(fin, indicator) {
   const map = {
     gross_profit: fin.gross_profit,
+    gross_margin: fin.gross_margin,
   }
   return map[indicator] != null ? Number(map[indicator]) : null
 }
