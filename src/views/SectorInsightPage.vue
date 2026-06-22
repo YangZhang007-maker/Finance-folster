@@ -277,24 +277,18 @@ const treemapOption = computed(() => {
   const data = filteredCompanyData.value
   if (data.length === 0) return null
 
+  // 淡化颜色映射表
+  const lightColors = {
+    gross_profit:  { top: '#f9d6d6', bg: '#fdf0f0' },
+    gross_margin:  { top: '#d0e6fb', bg: '#eaf3fd' },
+  }
+  const colors = lightColors[filters.value.indicator] || lightColors.gross_profit
+
   const treemapData = data.map((item, idx) => ({
     name: item.name,
     value: item.value,
     itemStyle: {
-      color: idx === 0 ? currentIndicator.value.treemapTopColor : currentIndicator.value.treemapBgColor,
-    },
-    label: {
-      show: true,
-      formatter: `{b}\n{a|${item.value}${currentIndicator.value.unit === '亿元' ? '亿' : '%'}}`,
-      rich: {
-        a: {
-          fontSize: 10,
-          color: '#fff',
-        },
-      },
-      color: '#fff',
-      fontSize: 13,
-      fontWeight: 'bold',
+      color: idx === 0 ? colors.top : colors.bg,
     },
   }))
 
@@ -314,8 +308,8 @@ const treemapOption = computed(() => {
         breadcrumb: { show: false },
         label: {
           show: true,
-          position: 'insideTopLeft',
-          color: '#fff',
+          position: 'center',
+          color: '#333',
           fontSize: 13,
           fontWeight: 'bold',
           formatter: (p) => {
@@ -323,8 +317,8 @@ const treemapOption = computed(() => {
             return `{b|${p.name}}\n{s|${p.value}${u}}`
           },
           rich: {
-            b: { fontSize: 13, fontWeight: 'bold', color: '#fff', lineHeight: 22 },
-            s: { fontSize: 10, color: '#fff', lineHeight: 16 },
+            b: { fontSize: 13, fontWeight: 'bold', color: '#333', lineHeight: 22 },
+            s: { fontSize: 11, color: '#555', lineHeight: 18 },
           },
         },
         upperLabel: { show: false },
