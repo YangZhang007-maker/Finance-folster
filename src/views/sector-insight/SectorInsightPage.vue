@@ -112,7 +112,7 @@ import { use } from 'echarts/core'
 import { TreemapChart } from 'echarts/charts'
 import { TooltipComponent, GridComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
-import { getWatchlist, getCompaniesByCodes, getFinancialsByYear } from '../lib/supabase.js'
+import { getWatchlist, getCompaniesByCodes, getFinancialsByYear } from '../../lib/supabase.js'
 
 use([TreemapChart, TooltipComponent, GridComponent, CanvasRenderer])
 

@@ -62,7 +62,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { searchCompanies, addToWatchlist, getWatchlist } from '../lib/supabase.js'
+import { searchCompanies, addToWatchlist, getWatchlist } from '../../lib/supabase.js'
 
 const query = ref('')
 const results = ref([])

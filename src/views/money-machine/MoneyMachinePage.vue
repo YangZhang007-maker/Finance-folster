@@ -102,7 +102,7 @@ import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
   LineElement, BarElement, Title, Tooltip, Legend, Filler
 } from 'chart.js'
-import { getAnnualFinancialsV2, searchCompanies } from '../lib/supabase.js'
+import { getAnnualFinancialsV2, searchCompanies } from '../../lib/supabase.js'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler)
 

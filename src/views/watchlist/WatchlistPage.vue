@@ -37,7 +37,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { getWatchlist, removeFromWatchlist, getFinancialIndicators, getCompanyNames } from '../lib/supabase.js'
+import { getWatchlist, removeFromWatchlist, getFinancialIndicators, getCompanyNames } from '../../lib/supabase.js'
 
 const watchlist = ref([])
 const indicators = ref([])

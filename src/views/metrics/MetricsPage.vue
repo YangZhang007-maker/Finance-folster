@@ -85,7 +85,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { getWatchlist, getFinancialIndicators, getCompanyNames } from '../lib/supabase.js'
+import { getWatchlist, getFinancialIndicators, getCompanyNames } from '../../lib/supabase.js'
 
 const columns = [
   { key: 'pe_ratio', label: 'PE', fmt: 'num2' },
