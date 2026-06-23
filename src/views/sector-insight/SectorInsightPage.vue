@@ -335,10 +335,12 @@ const treemapOption = computed(() => {
   }
 
   const treemapData = data.map((item) => {
-    if (isDualColor) {
-      // 双色：正值红色渐变，负值绿色渐变（绝对值越大越深）
-      // treemap 的 value 必须为正，用绝对值算面积
-      const absValue = Math.abs(item.value)
+    // treemap 的 value 必须为正，用绝对值算面积
+    const absValue = Math.abs(item.value)
+    const hasNegative = data.some(d => d.value < 0)
+
+    if (isDualColor && hasNegative) {
+      // 双色：正值红色渐变，负值绿色渐变
       if (item.value >= 0) {
         const maxVal = Math.max(...data.filter(d => d.value >= 0).map(d => d.value), 1)
         const t = maxVal > 0 ? item.value / maxVal : 0
@@ -358,15 +360,17 @@ const treemapOption = computed(() => {
         return { name: item.name, value: absValue, _rawValue: item.value, itemStyle: { color: rgbToHex(r, g, b) } }
       }
     }
-    // 单一颜色渐变
-    const maxVal = Math.max(...data.map(d => d.value), 1)
-    const minVal = Math.min(...data.map(d => d.value), 0)
-    const t = maxVal > minVal ? (item.value - minVal) / (maxVal - minVal) : 0
+
+    // 单一颜色渐变（含负值时统一用绝对值算面积）
+    const maxVal = Math.max(...data.map(d => hasNegative ? Math.abs(d.value) : d.value), 1)
+    const minVal = Math.min(...data.map(d => hasNegative ? Math.abs(d.value) : d.value), 0)
+    const drawVal = hasNegative ? Math.abs(item.value) : item.value
+    const t = maxVal > minVal ? (drawVal - minVal) / (maxVal - minVal) : 0
     const mx = hexToRgb(grad.max), mn = hexToRgb(grad.min)
     const r = Math.round(mn.r + (mx.r - mn.r) * t)
     const g = Math.round(mn.g + (mx.g - mn.g) * t)
     const b = Math.round(mn.b + (mx.b - mn.b) * t)
-    return { name: item.name, value: item.value, itemStyle: { color: rgbToHex(r, g, b) } }
+    return { name: item.name, value: drawVal, _rawValue: hasNegative ? item.value : null, itemStyle: { color: rgbToHex(r, g, b) } }
   })
 
   return {
