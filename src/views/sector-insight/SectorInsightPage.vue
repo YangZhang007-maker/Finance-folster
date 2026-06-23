@@ -296,6 +296,27 @@ const minValue = computed(() => {
 // ============================================================
 // ECharts Treemap 配置
 // ============================================================
+
+// 颜色渐变常量
+const RED_GRAD = { max: '#e52e2e', min: '#f8c8c8' }
+const BLUE_GRAD = { max: '#2086f3', min: '#c2dffb' }
+const GREEN_GRAD = { max: '#39a632', min: '#c8f0c8' }
+const colorGradients = {
+    gross_profit: RED_GRAD, gross_margin: BLUE_GRAD,
+    selling_to_gross: BLUE_GRAD, admin_to_gross: BLUE_GRAD,
+    selling_admin_to_gross: BLUE_GRAD, rd_to_gross: BLUE_GRAD,
+    sga_rd_to_gross: BLUE_GRAD, finance_expense: RED_GRAD,
+    finance_to_gross: BLUE_GRAD, operating_profit: RED_GRAD,
+    hard_profit: RED_GRAD, total_profit: RED_GRAD,
+    parent_net_profit: RED_GRAD, deducted_net_profit: RED_GRAD,
+    inventory: RED_GRAD, anchor_assets: RED_GRAD,
+    anchor_asset_ratio: BLUE_GRAD, effective_asset_return: BLUE_GRAD,
+    net_profit_margin: BLUE_GRAD, advance_contract_liab: RED_GRAD,
+    advance_to_revenue: BLUE_GRAD, debt_ratio_ex_advance: BLUE_GRAD,
+    debt_equity_ex_cash: BLUE_GRAD, roe: BLUE_GRAD,
+    total_shares: RED_GRAD,
+  }
+
 const treemapOption = computed(() => {
   const data = filteredCompanyData.value
   if (data.length === 0) return null
