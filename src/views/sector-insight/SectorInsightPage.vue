@@ -338,10 +338,9 @@ const treemapOption = computed(() => {
     const absValue = Math.abs(item.value)
     const hasNegative = data.some(d => d.value < 0)
 
-    // 确保每个矩形有最小可见面积：每个值至少占总和的5%/N（N=公司数）
-    const allAbsVals = data.map(d => Math.abs(d.value))
-    const sumAll = allAbsVals.reduce((a, b) => a + b, 0)
-    const minArea = Math.max(sumAll * 0.005, 0.01)  // 最少占总和的0.5%
+    // 确保每个矩形都可见：给每个值加一个基础padding（总和的2%）
+    const sumAll = data.map(d => Math.abs(d.value)).reduce((a, b) => a + b, 0)
+    const basePadding = Math.max(sumAll * 0.02, 0.01)
 
     if (isDualColor && hasNegative) {
       if (item.value >= 0) {
@@ -352,7 +351,7 @@ const treemapOption = computed(() => {
         const r = Math.round(mn.r + (mx.r - mn.r) * t)
         const g = Math.round(mn.g + (mx.g - mn.g) * t)
         const b = Math.round(mn.b + (mx.b - mn.b) * t)
-        return { name: item.name, value: Math.max(absValue, minArea), _rawValue: item.value, itemStyle: { color: rgbToHex(r, g, b) } }
+        return { name: item.name, value: Math.max(absValue, basePadding), _rawValue: item.value, itemStyle: { color: rgbToHex(r, g, b) } }
       } else {
         const negVals = data.filter(d => d.value < 0).map(d => Math.abs(d.value))
         const maxAbs = Math.max(...negVals, 1)
@@ -361,17 +360,17 @@ const treemapOption = computed(() => {
         const r = Math.round(mn.r + (mx.r - mn.r) * t)
         const g = Math.round(mn.g + (mx.g - mn.g) * t)
         const b = Math.round(mn.b + (mx.b - mn.b) * t)
-        return { name: item.name, value: Math.max(absValue, minArea), _rawValue: item.value, itemStyle: { color: rgbToHex(r, g, b) } }
+        return { name: item.name, value: Math.max(absValue, basePadding), _rawValue: item.value, itemStyle: { color: rgbToHex(r, g, b) } }
       }
     }
 
     const drawVal = hasNegative ? Math.abs(item.value) : item.value
-    const t = sumAll > 0 ? drawVal / sumAll : 0
+    const t = paddedSum > 0 ? (Math.abs(item.value) + basePadding) / paddedSum : 0
     const mx = hexToRgb(grad.max), mn = hexToRgb(grad.min)
     const r = Math.round(mn.r + (mx.r - mn.r) * t)
     const g = Math.round(mn.g + (mx.g - mn.g) * t)
     const b = Math.round(mn.b + (mx.b - mn.b) * t)
-    return { name: item.name, value: Math.max(drawVal, minArea), _rawValue: hasNegative ? item.value : null, itemStyle: { color: rgbToHex(r, g, b) } }
+    return { name: item.name, value: Math.max(drawVal, basePadding), _rawValue: hasNegative ? item.value : null, itemStyle: { color: rgbToHex(r, g, b) } }
   })
 
   return {
