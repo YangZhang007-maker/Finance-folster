@@ -129,7 +129,7 @@ export async function getFinancialsByYear(codes, year) {
     const batch = codes.slice(i, i + 200)
     const { data, error } = await supabase
       .from('annual_financials_v2')
-      .select('code, year, gross_profit, parent_net_profit, operating_revenue, total_assets, roe, gross_margin, net_profit_margin, selling_to_gross, admin_to_gross, selling_admin_to_gross, rd_to_gross, sga_rd_to_gross')
+      .select('code, year, gross_profit, parent_net_profit, operating_revenue, total_assets, roe, gross_margin, net_profit_margin, selling_to_gross, admin_to_gross, selling_admin_to_gross, rd_to_gross, sga_rd_to_gross, finance_expense, finance_to_gross, operating_profit, hard_profit, total_profit, deducted_net_profit, inventory, anchor_assets, anchor_asset_ratio, effective_asset_return, advance_contract_liab, advance_to_revenue, debt_ratio_ex_advance, debt_equity_ex_cash, total_shares')
       .in('code', batch)
       .eq('year', year)
     if (error) throw error

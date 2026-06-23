@@ -131,6 +131,24 @@ const indicatorOptions = [
   { value: 'selling_admin_to_gross', label: '销管费用占毛利比', note: '（销售费用+管理费用）/毛利润，销售费用及一般管理费用占毛利润的比例越少越好，两项合计30%以下最好，高于80%则回避', unit: '%', isPercent: true },
   { value: 'rd_to_gross', label: '研发费用占毛利比', note: '研发费用/毛利润，尽量回避那些必须经常花费巨额研发费用的公司，高于15%则回避', unit: '%', isPercent: true },
   { value: 'sga_rd_to_gross', label: '销管研三费占毛利比', note: '（销售费用+管理费用+研发费用）/毛利润，越低越好，高于80%则回避', unit: '%', isPercent: true },
+  { value: 'finance_expense', label: '财务费用', note: '利息支出-利息收入，正值代表净支出，负值代表净收入', unit: '亿元', isPercent: false, dualColor: true },
+  { value: 'finance_to_gross', label: '财务费用占毛利比', note: '财务费用/毛利润，小于15%为宜，高于15%则回避', unit: '%', isPercent: true },
+  { value: 'operating_profit', label: '经营利润', note: '毛利润-销售费用-管理费用-研发费用-财务费用+权益性投资损益，衡量所有经营相关的利润，稳定趋升，越高越好', unit: '亿元', isPercent: false },
+  { value: 'hard_profit', label: '硬朗度利润', note: '经营现金流净额-资本开支，衡量企业自由现金流，越高越好', unit: '亿元', isPercent: false },
+  { value: 'total_profit', label: '税前利润', note: '利润总额，包括经营利润与非经常性损益，是不同类资产之间比价的桥梁', unit: '亿元', isPercent: false },
+  { value: 'parent_net_profit', label: '归母净利润', note: '归属母公司股东的全部净利润，稳定趋升，越高越好', unit: '亿元', isPercent: false },
+  { value: 'deducted_net_profit', label: '扣非净利润', note: '扣除非经常损益后的净利润，稳定趋升，越高越好', unit: '亿元', isPercent: false },
+  { value: 'inventory', label: '存货', note: '对于制造类企业，要查看其存货增长的同时净利润是否相应增长。存货在某些年份迅速增加，而其后又迅速减少的制造类公司，它很可能处于高度竞争、时而繁荣时而衰退的行业，其中没有任何一家公司能让人变得富有。', unit: '亿元', isPercent: false },
+  { value: 'anchor_assets', label: '锚定资产', note: '货币、银行存款、债权、固定收益及金融类类现金资产，不含长期股权，不能独立产生经营性现金流的资产（不适用金融类企业）', unit: '亿元', isPercent: false },
+  { value: 'anchor_asset_ratio', label: '锚定资产占比', note: '锚定资产/总资产，过滤掉增发和发债等因素带来的现金增加后，该项稳定趋升、越高代表企业荷包越鼓。', unit: '%', isPercent: true },
+  { value: 'effective_asset_return', label: '有效资产收益率', note: '扣非净利润/（总资产-锚定资产），衡量一年能收回多少比例的有效资产，越高则赚钱机器含金量越足', unit: '%', isPercent: true },
+  { value: 'net_profit_margin', label: '净利润率', note: '净利润/营业总收入，如果一直保持在20%以上，那么很可能具有某种长期竞争优势。如果一直保持在10%以下，则很可能处于一个高度竞争行业，行业中没有一家公司能长期维持竞争优势，建议回避。', unit: '%', isPercent: true },
+  { value: 'advance_contract_liab', label: '预收款', note: '预收账款+合同负债，观察其是否随营收同比例变化', unit: '亿元', isPercent: false },
+  { value: 'advance_to_revenue', label: '预收款占总营收比', note: '（预收账款+合同负债）/营业收入，行业内横向比较可判断企业话语权，越高则越大', unit: '%', isPercent: true },
+  { value: 'debt_ratio_ex_advance', label: '剔除预收款的资产负债率', note: '（总负债-预收账款-合同负债）／（总资产-预收账款-合同负债），越低越好，高于80%要警惕', unit: '%', isPercent: true },
+  { value: 'debt_equity_ex_cash', label: '剔除预收款后的债务股权比', note: '（总负债-预收账款-合同负债）／（净资产-预收账款-合同负债+库存公司），越低越好，通常低于80%是好公司，具备持续竞争优势', unit: '%', isPercent: true },
+  { value: 'roe', label: 'ROE', note: '净利润/期末净资产，越高越好，15%以上优秀', unit: '%', isPercent: true },
+  { value: 'total_shares', label: '总股本', note: '全部市场股本合计', unit: '亿股', isPercent: false },
 ]
 
 // ============================================================
@@ -282,24 +300,9 @@ const treemapOption = computed(() => {
   const data = filteredCompanyData.value
   if (data.length === 0) return null
 
-  // 颜色渐进方案：最大值深色，其余按值递减逐渐变浅，梯度差小
-  // 统一深蓝→浅蓝渐变的指标
-const BLUE_GRAD = { max: '#2086f3', min: '#c2dffb' }
-const colorGradients = {
-    gross_profit: { max: '#e52e2e', min: '#f8c8c8' },
-    gross_margin: { max: '#2086f3', min: '#c2dffb' },
-    selling_to_gross: BLUE_GRAD,
-    admin_to_gross: BLUE_GRAD,
-    selling_admin_to_gross: BLUE_GRAD,
-    rd_to_gross: BLUE_GRAD,
-    sga_rd_to_gross: BLUE_GRAD,
-  }
-  const grad = colorGradients[filters.value.indicator] || colorGradients.gross_profit
+  const isDualColor = currentIndicator.value.dualColor
+  const grad = colorGradients[filters.value.indicator] || RED_GRAD
 
-  const maxVal = Math.max(...data.map(d => d.value), 1)
-  const minVal = Math.min(...data.map(d => d.value), 0)
-
-  // 将 hex 转为 rgb 分量
   function hexToRgb(hex) {
     const r = parseInt(hex.slice(1,3), 16)
     const g = parseInt(hex.slice(3,5), 16)
@@ -309,20 +312,38 @@ const colorGradients = {
   function rgbToHex(r, g, b) {
     return '#' + [r, g, b].map(v => Math.round(v).toString(16).padStart(2, '0')).join('')
   }
-  const maxRgb = hexToRgb(grad.max)
-  const minRgb = hexToRgb(grad.min)
 
   const treemapData = data.map((item) => {
-    // 线性插值：值越大越接近 maxRgb
-    const t = maxVal > minVal ? (item.value - minVal) / (maxVal - minVal) : 0
-    const r = Math.round(minRgb.r + (maxRgb.r - minRgb.r) * t)
-    const g = Math.round(minRgb.g + (maxRgb.g - minRgb.g) * t)
-    const b = Math.round(minRgb.b + (maxRgb.b - minRgb.b) * t)
-    return {
-      name: item.name,
-      value: item.value,
-      itemStyle: { color: rgbToHex(r, g, b) },
+    if (isDualColor) {
+      // 双色：正值红色渐变，负值绿色渐变（绝对值越大越深）
+      if (item.value >= 0) {
+        const maxVal = Math.max(...data.filter(d => d.value >= 0).map(d => d.value), 1)
+        const t = maxVal > 0 ? item.value / maxVal : 0
+        const mx = hexToRgb(RED_GRAD.max), mn = hexToRgb(RED_GRAD.min)
+        const r = Math.round(mn.r + (mx.r - mn.r) * t)
+        const g = Math.round(mn.g + (mx.g - mn.g) * t)
+        const b = Math.round(mn.b + (mx.b - mn.b) * t)
+        return { name: item.name, value: item.value, itemStyle: { color: rgbToHex(r, g, b) } }
+      } else {
+        const absVals = data.filter(d => d.value < 0).map(d => Math.abs(d.value))
+        const maxAbs = Math.max(...absVals, 1)
+        const t = Math.abs(item.value) / maxAbs
+        const mx = hexToRgb(GREEN_GRAD.max), mn = hexToRgb(GREEN_GRAD.min)
+        const r = Math.round(mn.r + (mx.r - mn.r) * t)
+        const g = Math.round(mn.g + (mx.g - mn.g) * t)
+        const b = Math.round(mn.b + (mx.b - mn.b) * t)
+        return { name: item.name, value: item.value, itemStyle: { color: rgbToHex(r, g, b) } }
+      }
     }
+    // 单一颜色渐变
+    const maxVal = Math.max(...data.map(d => d.value), 1)
+    const minVal = Math.min(...data.map(d => d.value), 0)
+    const t = maxVal > minVal ? (item.value - minVal) / (maxVal - minVal) : 0
+    const mx = hexToRgb(grad.max), mn = hexToRgb(grad.min)
+    const r = Math.round(mn.r + (mx.r - mn.r) * t)
+    const g = Math.round(mn.g + (mx.g - mn.g) * t)
+    const b = Math.round(mn.b + (mx.b - mn.b) * t)
+    return { name: item.name, value: item.value, itemStyle: { color: rgbToHex(r, g, b) } }
   })
 
   return {
@@ -381,13 +402,19 @@ const colorGradients = {
 // ============================================================
 function getIndicatorValue(fin, indicator) {
   const map = {
-    gross_profit: fin.gross_profit,
-    gross_margin: fin.gross_margin,
-    selling_to_gross: fin.selling_to_gross,
-    admin_to_gross: fin.admin_to_gross,
-    selling_admin_to_gross: fin.selling_admin_to_gross,
-    rd_to_gross: fin.rd_to_gross,
-    sga_rd_to_gross: fin.sga_rd_to_gross,
+    gross_profit: fin.gross_profit, gross_margin: fin.gross_margin,
+    selling_to_gross: fin.selling_to_gross, admin_to_gross: fin.admin_to_gross,
+    selling_admin_to_gross: fin.selling_admin_to_gross, rd_to_gross: fin.rd_to_gross,
+    sga_rd_to_gross: fin.sga_rd_to_gross, finance_expense: fin.finance_expense,
+    finance_to_gross: fin.finance_to_gross, operating_profit: fin.operating_profit,
+    hard_profit: fin.hard_profit, total_profit: fin.total_profit,
+    parent_net_profit: fin.parent_net_profit, deducted_net_profit: fin.deducted_net_profit,
+    inventory: fin.inventory, anchor_assets: fin.anchor_assets,
+    anchor_asset_ratio: fin.anchor_asset_ratio, effective_asset_return: fin.effective_asset_return,
+    net_profit_margin: fin.net_profit_margin, advance_contract_liab: fin.advance_contract_liab,
+    advance_to_revenue: fin.advance_to_revenue, debt_ratio_ex_advance: fin.debt_ratio_ex_advance,
+    debt_equity_ex_cash: fin.debt_equity_ex_cash, roe: fin.roe,
+    total_shares: fin.total_shares,
   }
   return map[indicator] != null ? Number(map[indicator]) : null
 }
