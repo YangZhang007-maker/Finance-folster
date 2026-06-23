@@ -376,7 +376,7 @@ const treemapOption = computed(() => {
   return {
     tooltip: {
       formatter: (params) => {
-        const displayVal = isDualColor && params.data && params.data._rawValue != null ? params.data._rawValue : params.value
+        const displayVal = params.data && params.data._rawValue != null ? params.data._rawValue : params.value
         return `${params.name}<br/>${currentIndicatorLabel.value}: <b>${displayVal}${currentIndicator.value.unit === '亿元' ? '亿元' : '%'}</b>`
       },
     },
@@ -398,7 +398,7 @@ const treemapOption = computed(() => {
           fontWeight: 'bold',
           formatter: (p) => {
             const u = currentIndicator.value.unit === '亿元' ? '亿' : '%'
-            const displayVal = isDualColor && p.data && p.data._rawValue != null ? p.data._rawValue : p.value
+            const displayVal = p.data && p.data._rawValue != null ? p.data._rawValue : p.value
             return `{b|${p.name}}\n{s|${displayVal}${u}}`
           },
           rich: {
