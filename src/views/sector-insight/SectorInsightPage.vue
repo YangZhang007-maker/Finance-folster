@@ -335,12 +335,15 @@ const treemapOption = computed(() => {
   }
 
   const treemapData = data.map((item) => {
-    // treemap 的 value 必须为正，用绝对值算面积
     const absValue = Math.abs(item.value)
     const hasNegative = data.some(d => d.value < 0)
 
+    // 确保每个矩形有最小面积，防止小值被隐藏
+    const allAbsVals = data.map(d => Math.abs(d.value))
+    const maxAll = Math.max(...allAbsVals, 1)
+    const minArea = maxAll * 0.015  // 最小面积 = 最大值的1.5%
+
     if (isDualColor && hasNegative) {
-      // 双色：正值红色渐变，负值绿色渐变
       if (item.value >= 0) {
         const maxVal = Math.max(...data.filter(d => d.value >= 0).map(d => d.value), 1)
         const t = maxVal > 0 ? item.value / maxVal : 0
@@ -348,7 +351,7 @@ const treemapOption = computed(() => {
         const r = Math.round(mn.r + (mx.r - mn.r) * t)
         const g = Math.round(mn.g + (mx.g - mn.g) * t)
         const b = Math.round(mn.b + (mx.b - mn.b) * t)
-        return { name: item.name, value: absValue, _rawValue: item.value, itemStyle: { color: rgbToHex(r, g, b) } }
+        return { name: item.name, value: Math.max(absValue, minArea), _rawValue: item.value, itemStyle: { color: rgbToHex(r, g, b) } }
       } else {
         const absVals = data.filter(d => d.value < 0).map(d => Math.abs(d.value))
         const maxAbs = Math.max(...absVals, 1)
@@ -357,20 +360,17 @@ const treemapOption = computed(() => {
         const r = Math.round(mn.r + (mx.r - mn.r) * t)
         const g = Math.round(mn.g + (mx.g - mn.g) * t)
         const b = Math.round(mn.b + (mx.b - mn.b) * t)
-        return { name: item.name, value: absValue, _rawValue: item.value, itemStyle: { color: rgbToHex(r, g, b) } }
+        return { name: item.name, value: Math.max(absValue, minArea), _rawValue: item.value, itemStyle: { color: rgbToHex(r, g, b) } }
       }
     }
 
-    // 单一颜色渐变（含负值时统一用绝对值算面积）
-    const maxVal = Math.max(...data.map(d => hasNegative ? Math.abs(d.value) : d.value), 1)
-    const minVal = Math.min(...data.map(d => hasNegative ? Math.abs(d.value) : d.value), 0)
     const drawVal = hasNegative ? Math.abs(item.value) : item.value
-    const t = maxVal > minVal ? (drawVal - minVal) / (maxVal - minVal) : 0
+    const t = maxAll > 0 ? (hasNegative ? Math.abs(item.value) : item.value) / maxAll : 0
     const mx = hexToRgb(grad.max), mn = hexToRgb(grad.min)
     const r = Math.round(mn.r + (mx.r - mn.r) * t)
     const g = Math.round(mn.g + (mx.g - mn.g) * t)
     const b = Math.round(mn.b + (mx.b - mn.b) * t)
-    return { name: item.name, value: drawVal, _rawValue: hasNegative ? item.value : null, itemStyle: { color: rgbToHex(r, g, b) } }
+    return { name: item.name, value: Math.max(drawVal, minArea), _rawValue: hasNegative ? item.value : null, itemStyle: { color: rgbToHex(r, g, b) } }
   })
 
   return {
