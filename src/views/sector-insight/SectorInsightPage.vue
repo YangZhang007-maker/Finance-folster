@@ -337,6 +337,8 @@ const treemapOption = computed(() => {
   const treemapData = data.map((item) => {
     if (isDualColor) {
       // 双色：正值红色渐变，负值绿色渐变（绝对值越大越深）
+      // treemap 的 value 必须为正，用绝对值算面积
+      const absValue = Math.abs(item.value)
       if (item.value >= 0) {
         const maxVal = Math.max(...data.filter(d => d.value >= 0).map(d => d.value), 1)
         const t = maxVal > 0 ? item.value / maxVal : 0
@@ -344,7 +346,7 @@ const treemapOption = computed(() => {
         const r = Math.round(mn.r + (mx.r - mn.r) * t)
         const g = Math.round(mn.g + (mx.g - mn.g) * t)
         const b = Math.round(mn.b + (mx.b - mn.b) * t)
-        return { name: item.name, value: item.value, itemStyle: { color: rgbToHex(r, g, b) } }
+        return { name: item.name, value: absValue, _rawValue: item.value, itemStyle: { color: rgbToHex(r, g, b) } }
       } else {
         const absVals = data.filter(d => d.value < 0).map(d => Math.abs(d.value))
         const maxAbs = Math.max(...absVals, 1)
@@ -353,7 +355,7 @@ const treemapOption = computed(() => {
         const r = Math.round(mn.r + (mx.r - mn.r) * t)
         const g = Math.round(mn.g + (mx.g - mn.g) * t)
         const b = Math.round(mn.b + (mx.b - mn.b) * t)
-        return { name: item.name, value: item.value, itemStyle: { color: rgbToHex(r, g, b) } }
+        return { name: item.name, value: absValue, _rawValue: item.value, itemStyle: { color: rgbToHex(r, g, b) } }
       }
     }
     // 单一颜色渐变
@@ -370,7 +372,8 @@ const treemapOption = computed(() => {
   return {
     tooltip: {
       formatter: (params) => {
-        return `${params.name}<br/>${currentIndicatorLabel.value}: <b>${params.value}${currentIndicator.value.unit === '亿元' ? '亿元' : '%'}</b>`
+        const displayVal = isDualColor && params.data && params.data._rawValue != null ? params.data._rawValue : params.value
+        return `${params.name}<br/>${currentIndicatorLabel.value}: <b>${displayVal}${currentIndicator.value.unit === '亿元' ? '亿元' : '%'}</b>`
       },
     },
     series: [
@@ -391,7 +394,8 @@ const treemapOption = computed(() => {
           fontWeight: 'bold',
           formatter: (p) => {
             const u = currentIndicator.value.unit === '亿元' ? '亿' : '%'
-            return `{b|${p.name}}\n{s|${p.value}${u}}`
+            const displayVal = isDualColor && p.data && p.data._rawValue != null ? p.data._rawValue : p.value
+            return `{b|${p.name}}\n{s|${displayVal}${u}}`
           },
           rich: {
             b: { fontSize: 13, fontWeight: 'bold', color: '#fff', lineHeight: 22, align: 'center' },
