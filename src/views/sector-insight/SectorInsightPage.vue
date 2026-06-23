@@ -388,6 +388,7 @@ const treemapOption = computed(() => {
         roam: false,
         nodeClick: false,
         breadcrumb: { show: false },
+        visibleMin: 0,
         label: {
           show: true,
           position: 'inside',
