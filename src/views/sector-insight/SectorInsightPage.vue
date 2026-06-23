@@ -338,14 +338,15 @@ const treemapOption = computed(() => {
     const absValue = Math.abs(item.value)
     const hasNegative = data.some(d => d.value < 0)
 
-    // 确保每个矩形有最小面积，防止小值被隐藏
+    // 确保每个矩形有最小可见面积：每个值至少占总和的5%/N（N=公司数）
     const allAbsVals = data.map(d => Math.abs(d.value))
-    const maxAll = Math.max(...allAbsVals, 1)
-    const minArea = maxAll * 0.015  // 最小面积 = 最大值的1.5%
+    const sumAll = allAbsVals.reduce((a, b) => a + b, 0)
+    const minArea = Math.max(sumAll * 0.005, 0.01)  // 最少占总和的0.5%
 
     if (isDualColor && hasNegative) {
       if (item.value >= 0) {
-        const maxVal = Math.max(...data.filter(d => d.value >= 0).map(d => d.value), 1)
+        const posVals = data.filter(d => d.value >= 0).map(d => d.value)
+        const maxVal = Math.max(...posVals, 1)
         const t = maxVal > 0 ? item.value / maxVal : 0
         const mx = hexToRgb(RED_GRAD.max), mn = hexToRgb(RED_GRAD.min)
         const r = Math.round(mn.r + (mx.r - mn.r) * t)
@@ -353,8 +354,8 @@ const treemapOption = computed(() => {
         const b = Math.round(mn.b + (mx.b - mn.b) * t)
         return { name: item.name, value: Math.max(absValue, minArea), _rawValue: item.value, itemStyle: { color: rgbToHex(r, g, b) } }
       } else {
-        const absVals = data.filter(d => d.value < 0).map(d => Math.abs(d.value))
-        const maxAbs = Math.max(...absVals, 1)
+        const negVals = data.filter(d => d.value < 0).map(d => Math.abs(d.value))
+        const maxAbs = Math.max(...negVals, 1)
         const t = Math.abs(item.value) / maxAbs
         const mx = hexToRgb(GREEN_GRAD.max), mn = hexToRgb(GREEN_GRAD.min)
         const r = Math.round(mn.r + (mx.r - mn.r) * t)
@@ -365,7 +366,7 @@ const treemapOption = computed(() => {
     }
 
     const drawVal = hasNegative ? Math.abs(item.value) : item.value
-    const t = maxAll > 0 ? (hasNegative ? Math.abs(item.value) : item.value) / maxAll : 0
+    const t = sumAll > 0 ? drawVal / sumAll : 0
     const mx = hexToRgb(grad.max), mn = hexToRgb(grad.min)
     const r = Math.round(mn.r + (mx.r - mn.r) * t)
     const g = Math.round(mn.g + (mx.g - mn.g) * t)
