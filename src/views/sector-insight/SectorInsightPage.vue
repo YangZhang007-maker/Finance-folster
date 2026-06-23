@@ -365,7 +365,7 @@ const treemapOption = computed(() => {
     }
 
     const drawVal = hasNegative ? Math.abs(item.value) : item.value
-    const t = paddedSum > 0 ? (Math.abs(item.value) + basePadding) / paddedSum : 0
+    const t = sumAll > 0 ? (Math.abs(item.value) + basePadding) / (sumAll + data.length * basePadding) : 0
     const mx = hexToRgb(grad.max), mn = hexToRgb(grad.min)
     const r = Math.round(mn.r + (mx.r - mn.r) * t)
     const g = Math.round(mn.g + (mx.g - mn.g) * t)
