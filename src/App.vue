@@ -11,6 +11,7 @@
           <router-link to="/money-machine" active-class="active-link">赚钱机器</router-link>
           <router-link to="/buffett" active-class="active-link">巴菲特指标</router-link>
           <router-link to="/sector-insight" active-class="active-link">行业洞察</router-link>
+          <router-link to="/buffett2" active-class="active-link">巴菲特指标2</router-link>
         </div>
       </div>
     </nav>
