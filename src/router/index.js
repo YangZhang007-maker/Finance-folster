@@ -7,6 +7,7 @@ import MoneyMachinePage from '../views/money-machine/MoneyMachinePage.vue'
 import BuffettPage from '../views/buffett/BuffettPage.vue'
 import SectorInsightPage from '../views/sector-insight/SectorInsightPage.vue'
 import Buffett2Page from '../views/buffett2/Buffett2Page.vue'
+import MoneyMachine2Page from '../views/money-machine2/MoneyMachine2Page.vue'
 
 const routes = [
   { path: '/', name: 'search', component: SearchPage },
@@ -17,6 +18,7 @@ const routes = [
   { path: '/buffett', name: 'buffett', component: BuffettPage },
   { path: '/sector-insight', name: 'sector-insight', component: SectorInsightPage },
   { path: '/buffett2', name: 'buffett2', component: Buffett2Page },
+  { path: '/money-machine2', name: 'money-machine2', component: MoneyMachine2Page },
 ]
 
 export default createRouter({
